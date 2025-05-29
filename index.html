@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misteri Langit & Bintang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Gaya dasar untuk body dan animasi bintang */
+        body {
+            font-family: 'Poppins', 'Roboto', sans-serif;
+            background-color: #0c1427; /* Warna dasar fallback jika canvas tidak tampil */
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        #star-canvas { /* Canvas untuk bintang dan aurora */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            /* background: linear-gradient(to bottom, #0f172a, #1e293b, #334155); Dihapus agar aurora terlihat jelas */
+        }
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background-color: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        .main-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #f0f9ff;
+            text-shadow: 0 0 10px #60a5fa, 0 0 20px #60a5fa;
+        }
+        @media (max-width: 768px) { .main-title { font-size: 2rem; } }
+        @media (max-width: 480px) { .main-title { font-size: 1.75rem; } }
+        
+        .section-title {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #c7d2fe;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .celestial-card {
+            background-color: rgba(45, 55, 72, 0.7);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .celestial-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(96, 165, 250, 0.3), 0 4px 6px -2px rgba(96, 165, 250, 0.2);
+        }
+        .video-container {
+            position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;
+            max-width: 100%; background: #000; border-radius: 0.5rem;
+        }
+        .video-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 0.5rem;
+        }
+        html { scroll-behavior: smooth; }
+
+        /* Gaya untuk Infografis Animasi Pembentukan Bintang */
+        #star-formation-animation-container {
+            background-color: rgba(30, 41, 59, 0.7);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            margin-top: 2rem;
+        }
+        #star-formation-canvas {
+            width: 100%;
+            height: 300px;
+            background-color: #0a0f1a;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .animation-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .animation-controls button, .animation-controls input[type="range"] {
+            padding: 0.5rem 1rem;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .animation-controls button:hover {
+            background-color: #2563eb;
+        }
+        .animation-controls input[type="range"] {
+            width: 80%;
+            max-width: 400px;
+        }
+        #stage-info { text-align: center; margin-top: 1rem; }
+        #stage-info h4 { font-size: 1.25rem; font-weight: 600; color: #93c5fd; margin-bottom: 0.25rem; }
+        #stage-info p { font-size: 0.9rem; color: #cbd5e1; }
+
+        /* Gaya untuk Game Koleksi Meteorit */
+        #meteor-game-container {
+            background-color: rgba(30, 41, 59, 0.85); /* Sedikit lebih solid */
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+            margin-top: 2rem;
+            text-align: center;
+        }
+        #meteor-canvas {
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            /* background-color: #0a0f1a; Dihapus, akan digambar di JS */
+            border-radius: 0.5rem;
+            margin: 0 auto 1rem auto;
+            cursor: crosshair;
+            display: block;
+            border: 1px solid #334155; /* Garis batas tipis */
+        }
+        .game-stats { display: flex; justify-content: space-around; margin-bottom: 1rem; font-size: 1.1rem; color: #e0e7ff; }
+        #score-display, #missed-display { font-weight: bold; }
+        #badge-info { font-size: 0.9rem; color: #94a3b8; margin-bottom: 1rem; }
+        
+        #game-over-screen {
+            display: none; /* Sembunyikan secara default */
+            position: absolute; /* Untuk menimpa canvas game */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(15, 23, 42, 0.95); /* bg-slate-900 */
+            padding: 2rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            z-index: 100; /* Di atas canvas game */
+            color: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #game-over-screen h3 { font-size: 2.5rem; color: #ef4444; /* red-500 */ margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.1em; }
+        #final-score-info { font-size: 1.25rem; margin-bottom: 1.5rem; }
+        
+        .game-button {
+            padding: 0.75rem 1.5rem;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+        .game-button:hover { transform: scale(1.05); }
+        #start-game-button { background-color: #10b981; /* Emerald */ }
+        #start-game-button:hover { background-color: #059669; }
+        #play-again-button { background-color: #3b82f6; /* Blue */ }
+        #play-again-button:hover { background-color: #2563eb; }
+
+        #top-scores-container { margin-top: 1.5rem; }
+        #top-scores-container h4 { font-size: 1.2rem; color: #a5b4fc; /* indigo-300 */ margin-bottom: 0.5rem; }
+        #top-scores-list { list-style: none; padding: 0; }
+        #top-scores-list li { background-color: rgba(71, 85, 105, 0.5); /* slate-600 */ padding: 0.3rem 0.6rem; border-radius: 0.25rem; margin-bottom: 0.25rem; font-size: 0.95rem;}
+        #top-scores-list li:nth-child(1) { background-color: rgba(250, 204, 21, 0.6); /* amber-400 */ color: #422006;} /* Emas untuk juara 1 */
+
+    </style>
+</head>
+<body class="text-gray-300">
+    <canvas id="star-canvas"></canvas>
+
+    <header class="py-4 shadow-lg">
+        <div class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center">
+            <h1 class="main-title mb-4 md:mb-0">Misteri Langit & Bintang</h1>
+            <nav>
+                <ul class="flex space-x-4 md:space-x-6">
+                    <li><a href="#home" class="hover:text-blue-300 transition duration-300">Home</a></li>
+                    <li><a href="#apa-itu-bintang" class="hover:text-blue-300 transition duration-300">Apa itu Bintang?</a></li>
+                    <li><a href="#apa-itu-langit" class="hover:text-blue-300 transition duration-300">Apa itu Langit?</a></li>
+                    <li><a href="#benda-langit" class="hover:text-blue-300 transition duration-300">Benda Langit</a></li>
+                    <li><a href="#video" class="hover:text-blue-300 transition duration-300">Video</a></li>
+                    <li><a href="#game-meteor" class="hover:text-blue-300 transition duration-300">Game Meteor</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-12 relative z-10">
+        <section id="home" class="min-h-screen flex flex-col justify-center items-center text-center">
+            <h2 class="text-5xl md:text-7xl font-bold text-white mb-6 animate-pulse">Selamat Datang, Sabrina Sitohang!</h2>
+            <p class="text-xl md:text-2xl text-gray-300 max-w-3xl">Mari kita bahas Langit dan Bintang serta beberapa Benda-benda Langit yaa! Hope you enjoyyy💫 and stay tune untuk kuliah umum selanjutnya!🎇</p>
+        </section>
+
+        <section id="apa-itu-bintang" class="py-16">
+            <h2 class="section-title">Apa itu Bintang?</h2>
+            <div class="space-y-6 text-lg leading-relaxed bg-slate-800/50 p-6 md:p-8 rounded-lg shadow-xl">
+                <p>Bintang adalah bola gas bercahaya raksasa, terutama hidrogen dan helium, yang terikat oleh gravitasinya sendiri...</p>
+                <h3 class="text-xl font-semibold text-indigo-300 mt-4">Definisi dari Berbagai Sumber dan Ahli:</h3>
+                <ul class="list-disc list-inside space-y-2 pl-4">
+                     
+                    <li><strong>Menurut NASA:</strong> "National Aeronautics and Space Administration menyebutkan bahwa bintang didefinisikan sebagai bola gas panas yang bercahaya. Misalnya, situs edukasi NASA menyatakan, “A star is a hot, glowing ball of gas”
+spaceplace.nasa.gov
+. Penjelasan lain dari materi NASA eClips juga menegaskan bahwa “A star is a huge ball of very hot, glowing gas that gives off both heat and light”
+nasaeclips.arc.nasa.gov
+. Kedua kutipan ini menekankan bahwa bintang terutama tersusun atas gas (plasma) sangat panas—terutama hidrogen dan helium—yang menghasilkan cahaya melalui reaksi fusi nuklir di inti bintang. Matahari kita sendiri pun adalah contoh bintang: sebuah bola gas panas (plasma) yang mengeluarkan cahaya dan panas ke tata surya."</li>
+                    <li><strong>Menurut ESA:</strong> "European Space Agency juga menyebutkan bahwa “The Sun is a star. Like most stars, the Sun is a ball of very hot gas…”
+esa.int
+. Pernyataan ini menjelaskan secara gamblang bahwa Matahari adalah jenis bintang yang umum, yaitu bola gas yang sangat panas yang memancarkan banyak cahaya dan panas."</li>
+                    <li><strong>Menurut Ilmuan Terkenal:</strong> Carl Sagan dalam bukunya Cosmos menggambarkan bintang sebagai “semacam dapur kosmik” di mana unsur ringan diolah menjadi unsur berat. Ia menulis: “A star is a kind of cosmic kitchen inside which atoms of hydrogen are cooked into heavier atoms. Artinya, bintang adalah tempat bertemunya hidrogen dalam suhu sangat tinggi sehingga terbentuk unsur-unsur lebih berat – suatu cara yang mudah dipahami untuk menjelaskan bahwa bintang menyintesis elemen melalui reaksi nuklir. (Beberapa astrofisikawan lain seperti Neil deGrasse Tyson pada dasarnya setuju bahwa bintang adalah bola plasma besar yang menyala akibat fusi nuklir di intinya, meski kutipan persis dari mereka tidak tersedia di sini.)</li>
+                </ul>
+                <p>Bintang memiliki berbagai ukuran, massa, suhu, dan kecerahan, namun bintang paling indah itu boru Sitohang *esss</p>
+
+                <h3 class="text-xl font-semibold text-indigo-300 mt-8 mb-4">Infografis: Proses Pembentukan Bintang</h3>
+                <div id="star-formation-animation-container">
+                    <canvas id="star-formation-canvas"></canvas>
+                    <div id="stage-info">
+                        <h4 id="sf-stage-title">Tahap Awal</h4>
+                        <p id="sf-stage-description">Awan gas dan debu antarbintang yang dingin dan masif.</p>
+                    </div>
+                    <div class="animation-controls">
+                        <button id="play-pause-animation-btn" class="game-button">Play</button>
+                        <input type="range" id="animation-slider" min="0" value="0" step="1">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="apa-itu-langit" class="py-16">
+            <h2 class="section-title">Apa itu Langit?</h2>
+            <div class="space-y-6 text-lg leading-relaxed bg-slate-800/50 p-6 md:p-8 rounded-lg shadow-xl">
+                <p>Secara umum, langit adalah ruang yang tampak di atas kita ketika kita menengadah—itulah atmosfer Bumi yang tersinari Matahari. Atmosfer ini terdiri dari lapisan udara dan partikel yang menyebarkan cahaya Matahari sehingga langit tampak berwarna biru di siang hari, merah-jambu atau oranye saat matahari terbit dan terbenam, dan gelap bertabur bintang di malam hari.</p>
+                <p>Atmosfer Bumi adalah lapisan gas yang menyelimuti planet kita terdiri dari beberapa lapisan:</p>
+                <div class="grid md:grid-cols-2 gap-8 items-center mt-6">
+                    <div>
+                        <ul class="list-disc list-inside space-y-3 pl-4">
+                            <li><strong>Troposfer:</strong> Lapisan terendah, tempat cuaca terjadi.</li>
+                            <li><strong>Stratosfer:</strong> Mengandung lapisan ozon.</li>
+                            <li><strong>Mesosfer:</strong> Tempat meteor terbakar.</li>
+                            <li><strong>Termosfer:</strong> Tempat aurora dan orbit ISS.</li>
+                            <li><strong>Eksosfer:</strong> Lapisan terluar, memudar ke angkasa.</li>
+                        </ul>
+                    </div>
+                    <div class="flex justify-center items-center">
+                        <img src="Atmosfer.jpg" alt="Ilustrasi Lapisan Atmosfer Bumi" class="rounded-lg shadow-lg max-w-full h-auto">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="benda-langit" class="py-16">
+            <h2 class="section-title">Benda-Benda Langit</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="celestial-card">
+                    <img src="Planet planet tata surya.jpg" alt="[Gambar Planet]" class="w-full h-48 object-cover rounded-md mb-4">
+                    <h3 class="text-xl font-semibold text-sky-300 mb-2">Planet</h3>
+                    <p class="text-gray-400 text-sm">Merkurius, venus, Bumi, Mars, Jupiter, Saturnus, Uranus. Neptunus.</p>
+                </div>
+                <div class="celestial-card">
+                    <img src="Gambar bulan.jpg" alt="[Gambar Satelit Alami]" class="w-full h-48 object-cover rounded-md mb-4">
+                    <h3 class="text-xl font-semibold text-sky-300 mb-2">Satelit Alami</h3>
+                    <p class="text-gray-400 text-sm">Bulan</p>
+                </div>
+                <div class="celestial-card">
+                    <img src="Asteroid.jpg" alt="[Gambar Asteroid]" class="w-full h-48 object-cover rounded-md mb-4">
+                    <h3 class="text-xl font-semibold text-sky-300 mb-2">Asteroid</h3>
+                    <p class="text-gray-400 text-sm">Batuan kecil di sabuk asteroid.</p>
+                </div>
+                <div class="celestial-card">
+                    <img src="Komet.jpg" alt="[Gambar Komet]" class="w-full h-48 object-cover rounded-md mb-4">
+                    <h3 class="text-xl font-semibold text-sky-300 mb-2">Komet</h3>
+                    <p class="text-gray-400 text-sm">Benda es dengan ekor gas.</p>
+                </div>
+                <div class="celestial-card">
+                    <img src="Bima sakti.jpg" alt="[Gambar Galaksi]" class="w-full h-48 object-cover rounded-md mb-4">
+                    <h3 class="text-xl font-semibold text-sky-300 mb-2">Galaksi</h3>
+                    <p class="text-gray-400 text-sm">Contoh: Bima Sakti, Andromeda.</p>
+                </div>
+                <div class="celestial-card">
+                    <img src="Nebula.jpg" alt="[Gambar Nebula]" class="w-full h-48 object-cover rounded-md mb-4">
+                    <h3 class="text-xl font-semibold text-sky-300 mb-2">Nebula</h3>
+                    <p class="text-gray-400 text-sm">Awan gas tempat lahirnya bintang.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="video" class="py-16">
+            <h2 class="section-title">Video Penutup Presentasi</h2>
+            <div class="max-w-3xl mx-auto">
+                <div class="video-container shadow-2xl">
+                    <iframe 
+                        src="vidiooo.mp4" 
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen
+                        title="Video Eksplorasi Luar Angkasa">
+                    </iframe>
+                </div>
+                <p class="text-center mt-4 text-gray-400 text-sm">Video menakjubkan tentang keindahan alam semesta, yang akhirnya ditemukan di semester 4</p>
+            </div>
+        </section>
+
+        <section id="game-meteor" class="py-16">
+            <h2 class="section-title">Game: Koleksi Meteorit</h2>
+            <div id="meteor-game-container" class="relative"> <canvas id="meteor-canvas"></canvas>
+                <div class="game-stats">
+                    <div id="score-display">Skor: 0</div>
+                    <div id="missed-display">Terlewat: 0 / 3</div>
+                </div>
+                <p id="badge-info">Kumpulkan skor untuk mendapatkan lencana virtual!</p>
+                <button id="start-game-button" class="game-button">Mulai Game</button>
+
+                <div id="game-over-screen">
+                    <h3>Game Over!</h3>
+                    <p id="final-score-info">Skor Akhir Anda: 0</p>
+                    <div id="top-scores-container">
+                        <h4>Top Skor:</h4>
+                        <ul id="top-scores-list">
+                            </ul>
+                    </div>
+                    <button id="play-again-button" class="game-button">Main Lagi</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="py-8 bg-slate-900 text-center text-gray-400">
+        <p>© <span id="currentYear"></span> Misteri Langit & Bintang. All rights reserved.</p>
+        <p class="mt-2 text-sm">This little website project would not shine without your light. Thank you, for you are the most beautiful inspiration and the strongest reason behind every line of its code:  
+            <a href="https://www.instagram.com/sabrinapsitohang?igsh=MXBjaW5ubWRocjByZw==t" target="_blank" rel="noopener noreferrer" class="hover:text-blue-300 underline">Sabrina</a>
+        </p>
+    </footer>
+
+    <script src="script.js"></script>
+
+    <script>
+        // Script untuk menampilkan tahun saat ini di footer
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // Smooth scroll untuk navigasi
+        document.querySelectorAll('nav a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                try {
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth' });
+                    }
+                } catch (error) {
+                    console.error("Error finding element for smooth scroll:", targetId, error);
+                }
+            });
+        });
+
+        // --- INFOGRAFIS ANIMASI PEMBENTUKAN BINTANG ---
+        const sfCanvas = document.getElementById('star-formation-canvas');
+        const sfCtx = sfCanvas ? sfCanvas.getContext('2d') : null; // Tambah pengecekan null
+        const playPauseBtn = document.getElementById('play-pause-animation-btn');
+        const animationSlider = document.getElementById('animation-slider');
+        const stageTitleEl = document.getElementById('sf-stage-title');
+        const stageDescEl = document.getElementById('sf-stage-description');
+
+        const sfStages = [
+            { title: "Tahap 1: Awan Molekul Raksasa", description: "Awan dingin berisi gas (hidrogen, helium) dan debu kosmik.", draw: drawGasCloud },
+            { title: "Tahap 2: Kontraksi Gravitasi", description: "Bagian awan mulai runtuh karena gravitasinya sendiri, membentuk inti padat.", draw: drawContraction },
+            { title: "Tahap 3: Protobintang", description: "Inti memanas dan bersinar karena energi dari kontraksi, menjadi protobintang.", draw: drawProtostar },
+            { title: "Tahap 4: Fusi Nuklir Dimulai", description: "Suhu dan tekanan di inti cukup tinggi untuk memulai fusi hidrogen menjadi helium.", draw: drawFusionIgnition },
+            { title: "Tahap 5: Bintang Deret Utama", description: "Bintang mencapai keseimbangan, memancarkan energi dari fusi nuklir di intinya.", draw: drawMainSequenceStar }
+        ];
+
+        if (animationSlider) animationSlider.max = sfStages.length - 1;
+        let currentSfStage = 0;
+        let sfAnimationInterval;
+        let isSfPlaying = false;
+
+        function drawGasCloud(ctx, canvas) {
+            if (!ctx || !canvas) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(100, 100, 150, 0.3)';
+            for (let i = 0; i < 100; i++) {
+                ctx.beginPath();
+                ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 3 + 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.fillStyle = 'rgba(200, 200, 255, 0.5)';
+             ctx.beginPath();
+             ctx.ellipse(canvas.width / 2, canvas.height / 2, canvas.width*0.4, canvas.height*0.3, 0, 0, Math.PI * 2);
+             ctx.fill();
+        }
+        function drawContraction(ctx, canvas) {
+            if (!ctx || !canvas) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            ctx.fillStyle = 'rgba(150, 150, 200, 0.5)';
+            for (let i = 0; i < 150; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * (canvas.width * 0.3) + (canvas.width * 0.05) ;
+                ctx.beginPath();
+                ctx.arc(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius, Math.random() * 2.5 + 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.fillStyle = 'rgba(220, 220, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, canvas.width * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        function drawProtostar(ctx, canvas) {
+            if (!ctx || !canvas) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            ctx.fillStyle = 'rgba(100, 100, 150, 0.2)';
+             for (let i = 0; i < 50; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * (canvas.width * 0.4) + (canvas.width * 0.15) ;
+                ctx.beginPath();
+                ctx.arc(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius, Math.random() * 2 + 0.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            const gradient = ctx.createRadialGradient(centerX, centerY, 5, centerX, centerY, canvas.width * 0.15);
+            gradient.addColorStop(0, 'rgba(255, 255, 220, 1)');
+            gradient.addColorStop(0.5, 'rgba(255, 220, 180, 0.8)');
+            gradient.addColorStop(1, 'rgba(255, 180, 100, 0.3)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, canvas.width * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        function drawFusionIgnition(ctx, canvas) {
+            if (!ctx || !canvas) return;
+            drawProtostar(ctx,canvas);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            ctx.strokeStyle = 'rgba(255, 255, 100, 0.7)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(centerX + Math.cos(angle) * (canvas.width * 0.25), centerY + Math.sin(angle) * (canvas.width * 0.25));
+                ctx.stroke();
+            }
+            const coreGradient = ctx.createRadialGradient(centerX, centerY, 2, centerX, centerY, canvas.width * 0.08);
+            coreGradient.addColorStop(0, 'white');
+            coreGradient.addColorStop(1, 'rgba(255, 255, 220, 0.5)');
+            ctx.fillStyle = coreGradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, canvas.width * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        function drawMainSequenceStar(ctx, canvas) {
+            if (!ctx || !canvas) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const starRadius = canvas.width * 0.12;
+            const gradient = ctx.createRadialGradient(centerX, centerY, starRadius * 0.2, centerX, centerY, starRadius);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            gradient.addColorStop(0.3, 'rgba(255, 255, 200, 1)');
+            gradient.addColorStop(0.7, 'rgba(255, 220, 150, 0.8)');
+            gradient.addColorStop(1, 'rgba(255, 200, 100, 0.2)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, starRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            for(let i=0; i<5; i++){
+                 ctx.beginPath();
+                 ctx.arc(centerX + (Math.random()-0.5)*starRadius*0.5, centerY + (Math.random()-0.5)*starRadius*0.5, Math.random()*2+1, 0, Math.PI*2);
+                 ctx.fill();
+            }
+        }
+
+        function updateSfDisplay(stageIndex) {
+            if (!sfStages[stageIndex] || !stageTitleEl || !stageDescEl || !animationSlider) return;
+            const stage = sfStages[stageIndex];
+            stageTitleEl.textContent = stage.title;
+            stageDescEl.textContent = stage.description;
+            animationSlider.value = stageIndex;
+            if (sfCanvas && sfCtx) {
+                sfCanvas.width = sfCanvas.clientWidth;
+                sfCanvas.height = sfCanvas.clientHeight;
+                stage.draw(sfCtx, sfCanvas);
+            } else {
+                console.error("Star Formation Canvas atau Context belum siap untuk menggambar.");
+            }
+        }
+        
+        if (playPauseBtn) {
+            playPauseBtn.addEventListener('click', () => {
+                if (isSfPlaying) {
+                    clearInterval(sfAnimationInterval);
+                    playPauseBtn.textContent = "Play";
+                } else {
+                    playPauseBtn.textContent = "Pause";
+                    sfAnimationInterval = setInterval(() => {
+                        currentSfStage = (currentSfStage + 1) % sfStages.length;
+                        updateSfDisplay(currentSfStage);
+                    }, 2000);
+                }
+                isSfPlaying = !isSfPlaying;
+            });
+        }
+
+        if (animationSlider) {
+            animationSlider.addEventListener('input', (e) => {
+                if (isSfPlaying) {
+                    clearInterval(sfAnimationInterval);
+                    if (playPauseBtn) playPauseBtn.textContent = "Play";
+                    isSfPlaying = false;
+                }
+                currentSfStage = parseInt(e.target.value);
+                updateSfDisplay(currentSfStage);
+            });
+        }
+        
+        window.addEventListener('load', () => {
+            if (sfCanvas) updateSfDisplay(0);
+        });
+        window.addEventListener('resize', () => {
+            if (sfCanvas && sfStages[currentSfStage]) updateSfDisplay(currentSfStage);
+        });
+
+        // --- GAME KOLEKSI METEORIT ---
+        const meteorCanvas = document.getElementById('meteor-canvas');
+        const meteorCtx = meteorCanvas ? meteorCanvas.getContext('2d') : null;
+        const scoreEl = document.getElementById('score-display');
+        const missedEl = document.getElementById('missed-display');
+        const startGameBtn = document.getElementById('start-game-button');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreInfo = document.getElementById('final-score-info');
+        const playAgainBtn = document.getElementById('play-again-button');
+        const topScoresListEl = document.getElementById('top-scores-list');
+
+        let score = 0;
+        let missedMeteors = 0;
+        const maxMisses = 3;
+        let meteors = [];
+        let meteorGameLoopId;
+        let baseMeteorSpeed = 1; // Kecepatan awal
+        let meteorSpawnInterval = 1800; // Interval spawn awal (ms)
+        let lastSpawnTime = 0;
+        let gameRunning = false;
+        const METEOR_SHAPES = ['circle', 'jagged', 'ellipse'];
+        const METEOR_COLORS = ['#FFD700', '#FF8C00', '#A0522D', '#D2B48C', '#808080', '#BEBDB8', '#E6E6FA', '#F08080'];
+
+        class Meteor {
+            constructor(x, y, radius, color, speed, shape) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius; // Radius utama untuk deteksi klik dan ukuran dasar
+                this.color = color;
+                this.speed = speed;
+                this.shape = shape || 'circle'; // Bentuk default
+                this.rotation = Math.random() * Math.PI * 2; // Untuk bentuk jagged
+                this.rotationSpeed = (Math.random() - 0.5) * 0.02;
+                this.active = true;
+            }
+
+            draw() {
+                if (!this.active || !meteorCtx) return;
+                meteorCtx.save();
+                meteorCtx.translate(this.x, this.y);
+                meteorCtx.rotate(this.rotation);
+
+                meteorCtx.fillStyle = this.color;
+                meteorCtx.beginPath();
+
+                switch (this.shape) {
+                    case 'jagged':
+                        const spikes = 5 + Math.floor(Math.random() * 3); // 5-7 duri
+                        for (let i = 0; i < spikes * 2; i++) {
+                            const angle = (i / (spikes * 2)) * Math.PI * 2;
+                            const r = (i % 2 === 0) ? this.radius : this.radius * 0.6;
+                            meteorCtx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+                        }
+                        break;
+                    case 'ellipse':
+                        meteorCtx.ellipse(0, 0, this.radius, this.radius * 0.6, 0, 0, Math.PI * 2);
+                        break;
+                    case 'circle':
+                    default:
+                        meteorCtx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                        break;
+                }
+                meteorCtx.closePath();
+                meteorCtx.fill();
+
+                // Ekor sederhana
+                meteorCtx.rotate(-this.rotation); // Balikkan rotasi untuk ekor
+                meteorCtx.beginPath();
+                meteorCtx.moveTo(0, -this.radius * 0.5); // Mulai dari belakang meteor
+                meteorCtx.lineTo(-this.radius * 0.3, -this.radius * 2.5);
+                meteorCtx.lineTo(this.radius * 0.3, -this.radius * 2.5);
+                meteorCtx.closePath();
+                meteorCtx.fillStyle = `rgba(255, 255, 255, ${0.2 + Math.random()*0.2})`; // Ekor sedikit bervariasi opacitynya
+                meteorCtx.fill();
+                
+                meteorCtx.restore();
+            }
+
+            update() {
+                if (!this.active) return;
+                this.y += this.speed;
+                this.rotation += this.rotationSpeed;
+                if (this.y - this.radius > meteorCanvas.height) {
+                    this.active = false;
+                    if (gameRunning) { // Hanya hitung miss jika game masih berjalan
+                        missedMeteors++;
+                        updateMissedDisplay();
+                        if (missedMeteors > maxMisses) {
+                            triggerGameOver();
+                        }
+                    }
+                }
+            }
+        }
+        
+        function drawGameBackground() {
+            if (!meteorCtx || !meteorCanvas) return;
+            // Gradasi gelap
+            const gradient = meteorCtx.createLinearGradient(0, 0, 0, meteorCanvas.height);
+            gradient.addColorStop(0, '#0c1427'); // Biru sangat gelap
+            gradient.addColorStop(0.7, '#1a2035');
+            gradient.addColorStop(1, '#2a3047'); // Sedikit lebih terang di bawah
+            meteorCtx.fillStyle = gradient;
+            meteorCtx.fillRect(0, 0, meteorCanvas.width, meteorCanvas.height);
+
+            // Bintang-bintang jauh (sedikit)
+            meteorCtx.fillStyle = 'rgba(200, 200, 255, 0.3)';
+            for (let i = 0; i < 30; i++) { // Jumlah bintang di background game
+                meteorCtx.beginPath();
+                meteorCtx.arc(Math.random() * meteorCanvas.width, Math.random() * meteorCanvas.height, Math.random() * 1 + 0.5, 0, Math.PI * 2);
+                meteorCtx.fill();
+            }
+        }
+
+
+        function spawnMeteor() {
+            if (!meteorCanvas) return;
+            const radius = Math.random() * 8 + 12; // Ukuran meteor 12-20px
+            const x = Math.random() * (meteorCanvas.width - radius * 2) + radius;
+            const y = 0 - radius;
+            const color = METEOR_COLORS[Math.floor(Math.random() * METEOR_COLORS.length)];
+            const speed = baseMeteorSpeed + Math.random() * 1.5;
+            const shape = METEOR_SHAPES[Math.floor(Math.random() * METEOR_SHAPES.length)];
+            meteors.push(new Meteor(x, y, radius, color, speed, shape));
+        }
+
+        function updateScoreDisplay() {
+            if (scoreEl) scoreEl.textContent = `Skor: ${score}`;
+        }
+        function updateMissedDisplay() {
+            if (missedEl) missedEl.textContent = `Terlewat: ${missedMeteors} / ${maxMisses + 1}`;
+        }
+
+        function increaseDifficulty() {
+            if (score > 0 && score % 5 === 0) { // Setiap 5 poin
+                baseMeteorSpeed += 0.08; // Percepat sedikit
+                meteorSpawnInterval = Math.max(400, meteorSpawnInterval - 70); // Kurangi interval spawn, minimal 0.4 detik
+                // console.log(`Kesulitan meningkat: Speed: ${baseMeteorSpeed.toFixed(2)}, Spawn Interval: ${meteorSpawnInterval}ms`);
+            }
+        }
+        
+        function meteorGameLoop(timestamp) {
+            if (!gameRunning || !meteorCtx || !meteorCanvas) {
+                 if (meteorGameLoopId) cancelAnimationFrame(meteorGameLoopId);
+                 return;
+            }
+            
+            meteorCtx.clearRect(0, 0, meteorCanvas.width, meteorCanvas.height);
+            drawGameBackground(); // Gambar background game setiap frame
+
+            if (timestamp - lastSpawnTime > meteorSpawnInterval) {
+                spawnMeteor();
+                lastSpawnTime = timestamp;
+            }
+
+            for (let i = meteors.length - 1; i >= 0; i--) {
+                const meteor = meteors[i];
+                meteor.update(); // Update akan menangani miss
+                meteor.draw();
+                if (!meteor.active && !meteors.find(m => m === meteor)) { // Jika sudah di-handle oleh update dan tidak terhapus (jarang terjadi)
+                    meteors.splice(i, 1);
+                }
+            }
+             // Hapus meteor yang tidak aktif dari array utama setelah loop iterasi
+            meteors = meteors.filter(meteor => meteor.active);
+
+
+            if (gameRunning) { // Pastikan game masih berjalan sebelum request frame berikutnya
+                 meteorGameLoopId = requestAnimationFrame(meteorGameLoop);
+            }
+        }
+
+        function triggerGameOver() {
+            gameRunning = false;
+            if (meteorGameLoopId) cancelAnimationFrame(meteorGameLoopId);
+            if (gameOverScreen) gameOverScreen.style.display = 'flex'; // Tampilkan layar game over
+            if (finalScoreInfo) finalScoreInfo.textContent = `Skor Akhir Anda: ${score}`;
+            saveTopScore(score);
+            displayTopScores();
+            if (startGameBtn) startGameBtn.style.display = 'none'; // Sembunyikan tombol start awal
+            if (playAgainBtn) playAgainBtn.style.display = 'inline-block'; // Tampilkan tombol main lagi
+
+            // Animasi sederhana untuk Game Over
+            if (meteorCtx && meteorCanvas) {
+                meteorCtx.clearRect(0, 0, meteorCanvas.width, meteorCanvas.height);
+                drawGameBackground(); // Gambar background game
+                meteorCtx.fillStyle = "rgba(239, 68, 68, 0.8)"; // Warna merah semi-transparan
+                meteorCtx.textAlign = "center";
+                meteorCtx.font = "bold 48px Poppins";
+                meteorCtx.fillText("GAME OVER", meteorCanvas.width / 2, meteorCanvas.height / 2 - 30);
+                meteorCtx.font = "24px Poppins";
+                meteorCtx.fillStyle = "rgba(255, 255, 255, 0.9)";
+                meteorCtx.fillText(`Skor: ${score}`, meteorCanvas.width / 2, meteorCanvas.height / 2 + 20);
+            }
+             console.log("Game Over! Skor:", score);
+        }
+
+        function resetGame() {
+            score = 0;
+            missedMeteors = 0;
+            meteors = [];
+            baseMeteorSpeed = 1;
+            meteorSpawnInterval = 1800;
+            lastSpawnTime = 0;
+            updateScoreDisplay();
+            updateMissedDisplay();
+            if (gameOverScreen) gameOverScreen.style.display = 'none';
+            if (startGameBtn) startGameBtn.style.display = 'inline-block'; // Tampilkan kembali tombol start
+            if (playAgainBtn) playAgainBtn.style.display = 'none'; // Sembunyikan tombol play again
+        }
+
+        function startGame() {
+            if (gameRunning || !meteorCanvas) return;
+            resetGame();
+            gameRunning = true;
+            if (startGameBtn) startGameBtn.style.display = 'none';
+            
+            meteorCanvas.width = meteorCanvas.clientWidth;
+            meteorCanvas.height = meteorCanvas.clientHeight;
+            
+            // Mulai game loop
+            lastSpawnTime = performance.now(); // Set lastSpawnTime saat game dimulai
+            meteorGameLoopId = requestAnimationFrame(meteorGameLoop);
+            console.log("Game Koleksi Meteorit Dimulai!");
+        }
+
+        if (startGameBtn) {
+            startGameBtn.addEventListener('click', startGame);
+        }
+        if (playAgainBtn) {
+            playAgainBtn.addEventListener('click', () => {
+                if (gameOverScreen) gameOverScreen.style.display = 'none'; // Sembunyikan game over screen
+                startGame(); // Mulai game baru
+            });
+        }
+        
+        if (meteorCanvas) {
+            meteorCanvas.addEventListener('click', (event) => {
+                if (!gameRunning) return;
+                const rect = meteorCanvas.getBoundingClientRect();
+                const clickX = event.clientX - rect.left;
+                const clickY = event.clientY - rect.top;
+
+                for (let i = meteors.length - 1; i >= 0; i--) {
+                    const meteor = meteors[i];
+                    if (meteor.active) {
+                        // Deteksi klik yang lebih akurat untuk bentuk non-lingkaran bisa kompleks.
+                        // Untuk sekarang, kita gunakan radius utama sebagai batas deteksi.
+                        const distance = Math.sqrt(Math.pow(clickX - meteor.x, 2) + Math.pow(clickY - meteor.y, 2));
+                        if (distance < meteor.radius * 1.2) { // Perbesar sedikit area klik
+                            score++;
+                            meteor.active = false; // Meteor diklik
+                            // Efek partikel sederhana
+                            if (meteorCtx) {
+                                for(let k=0; k<8; k++){
+                                    meteorCtx.fillStyle = meteor.color;
+                                    meteorCtx.globalAlpha = Math.random() * 0.5 + 0.5;
+                                    meteorCtx.fillRect(meteor.x + (Math.random()-0.5)*meteor.radius*1.5, meteor.y + (Math.random()-0.5)*meteor.radius*1.5, Math.random()*3+2, Math.random()*3+2);
+                                }
+                                meteorCtx.globalAlpha = 1.0;
+                            }
+                            updateScoreDisplay();
+                            increaseDifficulty();
+                            // Hapus meteor dari array agar tidak dihitung sebagai miss
+                            meteors.splice(i, 1); 
+                            break; 
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- TOP SCORES (localStorage) ---
+        const MAX_TOP_SCORES = 5;
+        function getTopScores() {
+            const scoresJSON = localStorage.getItem('meteorTopScores');
+            return scoresJSON ? JSON.parse(scoresJSON) : [];
+        }
+        function saveTopScore(currentScore) {
+            if (typeof currentScore !== 'number' || currentScore <= 0) return;
+            let topScores = getTopScores();
+            topScores.push(currentScore);
+            topScores.sort((a, b) => b - a); // Urutkan dari tertinggi ke terendah
+            topScores = topScores.slice(0, MAX_TOP_SCORES); // Ambil N skor teratas
+            localStorage.setItem('meteorTopScores', JSON.stringify(topScores));
+        }
+        function displayTopScores() {
+            if (!topScoresListEl) return;
+            const topScores = getTopScores();
+            topScoresListEl.innerHTML = ''; // Kosongkan list sebelumnya
+            if (topScores.length === 0) {
+                topScoresListEl.innerHTML = '<li>Belum ada skor tertinggi.</li>';
+            } else {
+                topScores.forEach((s, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = `${index + 1}. ${s} poin`;
+                    topScoresListEl.appendChild(li);
+                });
+            }
+        }
+        
+        // Inisialisasi tampilan awal game dan event listener resize
+        window.addEventListener('load', () => {
+            if (sfCanvas) updateSfDisplay(0); // Infografis
+            
+            // Game
+            if(meteorCanvas && meteorCtx && startGameBtn && startGameBtn.style.display !== 'none') {
+                meteorCanvas.width = meteorCanvas.clientWidth;
+                meteorCanvas.height = meteorCanvas.clientHeight;
+                drawGameBackground();
+                meteorCtx.fillStyle = "rgba(200, 200, 255, 0.8)";
+                meteorCtx.font = "bold 20px Poppins";
+                meteorCtx.textAlign = "center";
+                meteorCtx.fillText("Klik 'Mulai Game' untuk bermain!", meteorCanvas.width / 2, meteorCanvas.height / 2);
+            }
+            if (playAgainBtn) playAgainBtn.style.display = 'none'; // Pastikan tombol play again tersembunyi awalnya
+            if (gameOverScreen) gameOverScreen.style.display = 'none'; // Pastikan game over screen tersembunyi awalnya
+            updateMissedDisplay(); // Tampilkan batas miss awal
+        });
+
+        window.addEventListener('resize', () => {
+            // Infografis
+            if (sfCanvas && sfStages[currentSfStage]) {
+                sfCanvas.width = sfCanvas.clientWidth;
+                sfCanvas.height = sfCanvas.clientHeight;
+                updateSfDisplay(currentSfStage);
+            }
+            // Game
+            if (meteorCanvas) {
+                meteorCanvas.width = meteorCanvas.clientWidth;
+                meteorCanvas.height = meteorCanvas.clientHeight;
+                if (!gameRunning && startGameBtn && startGameBtn.style.display !== 'none') {
+                    drawGameBackground();
+                    if (meteorCtx) {
+                        meteorCtx.fillStyle = "rgba(200, 200, 255, 0.8)";
+                        meteorCtx.font = "bold 20px Poppins";
+                        meteorCtx.textAlign = "center";
+                        meteorCtx.fillText("Klik 'Mulai Game' untuk bermain!", meteorCanvas.width / 2, meteorCanvas.height / 2);
+                    }
+                } else if (!gameRunning && gameOverScreen && gameOverScreen.style.display === 'flex') {
+                    // Jika game over screen tampil, gambar ulang juga
+                     triggerGameOver(); // Panggil ulang untuk menggambar ulang game over di canvas
+                }
+                // Jika game sedang berjalan, loop animasi akan menangani penggambaran ulang
+            }
+        });
+    </script>
+</body>
+</html>
